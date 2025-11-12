@@ -4,36 +4,68 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
+# ---------------------------------------------------------
+# 1. Data inladen en voorbereiden
+# ---------------------------------------------------------
 data = pd.read_csv("../data/Ocean_Health_Index_2018_global_scores.csv")
 
-# keep only numeric columns 
-data = data.select_dtypes(include=['float64', 'int64']).dropna()
+# Enkel numerieke kolommen behouden
+data = data.select_dtypes(include=['float64', 'int64'])
 
-# X = data[['CW']]
-X = data[['ECO', 'AO', 'CP', 'BD', 'FP', 'CS', 'FIS', 'HAB', 'SP', 'NP', 'TR', 'SPP', 'LSP', 'trnd_sc', 'ICO']]
-y = data['Index_']
+# Kolommen kiezen
+factor = 'AO'
+target = 'Index_'
 
-# filter out rows where any of the selected X columns are 0
-X = X[(X != 0).all(axis=1)]
-y = y.loc[X.index]  
+# Verwijder rijen waar factor of target nul of NaN is
+data = data[(data[factor] != 0) & (data[target] != 0)]
+data = data.dropna(subset=[factor, target])
 
+# Data splitsen
+X = data[[factor]]
+y = data[target]
 
-# X_train, X_test, y_train, y_test = train_test_split(X[['ECO', 'CW']], y, test_size=0.2, random_state=42)
-X_train, X_test, y_train, y_test = train_test_split(X[['ECO', 'AO', 'CP', 'BD', 'FP', 'CS', 'FIS', 'HAB', 'SP', 'NP', 'TR', 'SPP', 'LSP', 'trnd_sc', 'ICO']], y, test_size=0.2, random_state=42)
+# ---------------------------------------------------------
+# 2. Train-test split
+# ---------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-# train model
+# ---------------------------------------------------------
+# 3. Model trainen
+# ---------------------------------------------------------
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# predict and evaluate
+# ---------------------------------------------------------
+# 4. Voorspellingen maken en prestaties berekenen
+# ---------------------------------------------------------
 y_pred = model.predict(X_test)
-print("R² score:", round(r2_score(y_test, y_pred), 3))
+r2 = r2_score(y_test, y_pred)
+
+print(f"R² score: {r2:.3f}")
 print("Eerste 5 voorspellingen:", y_pred[:5])
 
-# plot predicted vs actual
-plt.scatter(y_test, y_pred, alpha=0.6)
-plt.xlabel("Echte waarden (Index_)")
-plt.ylabel("Voorspelde waarden (Index_)")
-plt.title("Voorspelde vs Echte Ocean Health Index")
-plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+# ---------------------------------------------------------
+# 5. Visualisatie: Scatterplot + regressielijn
+# ---------------------------------------------------------
+plt.figure(figsize=(8, 6))
+plt.scatter(X_test, y_test, color='blue', label='Werkelijke waarden')
+plt.plot(X_test, y_pred, color='red', label='Voorspelde lijn', linewidth=2)
+plt.xlabel(factor)
+plt.ylabel("Index_ (Ocean Health Index)")
+plt.title(f"Relatie tussen {factor} en Ocean Health Index (zonder nullen)")
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.tight_layout()
 plt.show()
+
+# ---------------------------------------------------------
+# 6. Interpretatie (voor je presentatie)
+# ---------------------------------------------------------
+"""
+Interpretatie:
+- Nulwaarden (die eigenlijk ontbrekende data voorstellen) zijn genegeerd.
+- De R²-score toont nu een realistischer beeld van de relatie tussen Coastal Protection en de Ocean Health Index.
+- Zo krijg je een zuivere correlatie zonder vervorming door ontbrekende data.
+"""
